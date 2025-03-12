@@ -4,7 +4,7 @@
         dev-push local-deploy cloud-deploy setup-local run-local test-local \
         debug-deps debug-container clean-local create-secret show-config venv \
         cache-clean acr-login acr-build acr-push acr-clean acr-rebuild check-env \
-        clean-artifacts
+        clean-artifacts format lint dev hooks
 
 # Core variables
 REGISTRY_TYPE ?= ghcr
@@ -49,9 +49,12 @@ venv:
 # Local development setup
 setup-local:
 	@echo "Setting up local development environment..."
-	mkdir -p /tmp/nllb_models
-	$(PYTHON) -m venv $(VENV)
-	. $(VENV)/bin/activate && pip install --upgrade pip && pip install -r requirements.txt
+	./scripts/setup_dev.sh
+
+# Git hooks
+hooks:
+	@echo "Installing git hooks..."
+	./scripts/install_hooks.sh
 
 # Build and push commands
 build:
@@ -67,20 +70,37 @@ deploy: check-env
 	    -e "s|\$${REGISTRY_SECRET_NAME}|$(REGISTRY_SECRET_NAME)|g" \
 	    k8s/translation-service.yaml | kubectl apply -f -
 
-# Testing commands
+# Development commands
+dev: setup-local
+	@echo "Starting Translation service in development mode..."
+	./scripts/run_dev.sh
+
+# Running commands
 run:
-	$(PYTHON) src/main.py
+	$(PYTHON) -m uvicorn src.main:app --host 0.0.0.0 --port 8000
 
 run-local: setup-local
 	@echo "Starting Translation service locally..."
 	. $(VENV)/bin/activate && $(PYTHON) -m uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
 
+# Testing commands
 test:
-	. $(VENV)/bin/activate && pytest tests/
+	./scripts/run_tests.sh
+
+# Code quality commands
+format:
+	@echo "Formatting code with black and isort..."
+	. $(VENV)/bin/activate && black src tests
+	. $(VENV)/bin/activate && isort src tests
+
+lint:
+	@echo "Linting code with flake8..."
+	. $(VENV)/bin/activate && flake8 src tests
 
 # Cleanup commands
-clean: clean-artifacts clean-local
-	@echo "Clean complete!"
+clean:
+	@echo "Cleaning project..."
+	./scripts/clean.sh
 
 clean-local:
 	rm -rf $(VENV)
@@ -88,6 +108,7 @@ clean-local:
 	rm -rf __pycache__
 	rm -rf *.pyc
 	rm -rf .pytest_cache
+	rm -rf .build
 
 # Environment check
 check-env:
@@ -105,8 +126,12 @@ help:
 	@echo "Available commands:"
 	@echo "  Local Development:"
 	@echo "    make setup-local   - Set up local development environment"
+	@echo "    make dev           - Run service in development mode with hot reloading"
 	@echo "    make run-local     - Run service locally"
-	@echo "    make test          - Run tests"
+	@echo "    make test          - Run tests with coverage"
+	@echo "    make format        - Format code with black and isort"
+	@echo "    make lint          - Lint code with flake8"
+	@echo "    make hooks         - Install git hooks"
 	@echo ""
 	@echo "  Build and Deploy:"
 	@echo "    make build         - Build container image"

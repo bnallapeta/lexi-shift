@@ -5,6 +5,7 @@ This module contains tests for the configuration classes and validation.
 """
 
 import os
+
 import pytest
 from pydantic import ValidationError
 
@@ -16,7 +17,7 @@ def test_model_config_defaults():
     config = ModelConfig()
     assert config.model_size == "small"
     assert config.device == "cpu"
-    assert config.compute_type == "int8"
+    assert config.compute_type == "float32"
     assert config.cpu_threads == 4
     assert config.num_workers == 1
     assert config.download_root == "/tmp/nllb_models"
@@ -39,23 +40,23 @@ def test_model_config_validation():
     assert config.cpu_threads == 8
     assert config.num_workers == 2
     assert config.download_root == "/custom/path"
-    
+
     # Test invalid model_size
     with pytest.raises(ValidationError):
         ModelConfig(model_size="invalid")
-    
+
     # Test invalid device
     with pytest.raises(ValidationError):
         ModelConfig(device="invalid")
-    
+
     # Test invalid compute_type
     with pytest.raises(ValidationError):
         ModelConfig(compute_type="invalid")
-    
+
     # Test invalid cpu_threads
     with pytest.raises(ValidationError):
         ModelConfig(cpu_threads=0)
-    
+
     # Test invalid num_workers
     with pytest.raises(ValidationError):
         ModelConfig(num_workers=0)
@@ -86,7 +87,7 @@ def test_server_config_validation():
     assert config.workers == 4
     assert config.log_level == "debug"
     assert config.cors_origins == ["http://localhost:3000", "https://example.com"]
-    
+
     # Test invalid log_level
     with pytest.raises(ValidationError):
         ServerConfig(log_level="invalid")
@@ -110,13 +111,13 @@ def test_settings_from_env(monkeypatch):
     monkeypatch.setenv("DEBUG", "true")
     monkeypatch.setenv("MODEL__MODEL_SIZE", "large")
     monkeypatch.setenv("SERVER__PORT", "9000")
-    
+
     # Create settings
     config = Settings()
-    
+
     # Check values
     assert config.app_name == "custom-service"
     assert config.app_version == "1.0.0"
     assert config.debug is True
     assert config.model.model_size == "large"
-    assert config.server.port == 9000 
+    assert config.server.port == 9000

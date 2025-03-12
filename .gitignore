@@ -169,3 +169,12 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Project specific
+.build/
+/tmp/
+*.swp
+*.swo
+.DS_Store
+.vscode/
+model_cache/

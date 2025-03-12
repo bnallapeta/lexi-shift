@@ -41,6 +41,11 @@ We have successfully implemented:
 - Proper error handling and validation
 - Language code mapping between ISO codes (e.g., "en", "fr") and NLLB-200 codes (e.g., "eng_Latn", "fra_Latn")
 - Support for different model sizes and compute types
+- Language detection for automatic source language identification
+- Asynchronous translation endpoints with task tracking
+- Translation caching for improved performance
+- Prometheus metrics for monitoring
+- Kubernetes deployment with resource limits and autoscaling
 
 ## Quick Start
 
@@ -55,18 +60,21 @@ We have successfully implemented:
 1. **Set up the development environment**
 
    ```bash
-   # Create and activate a virtual environment
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   # Using the setup script
+   ./scripts/setup_dev.sh
    
-   # Install dependencies
-   pip install -r requirements.txt
+   # Or using make
+   make setup-local
    ```
 
-2. **Run the service locally**
+2. **Run the service in development mode**
 
    ```bash
-   python -m uvicorn src.main:app --host 0.0.0.0 --port 8000
+   # Using the development script
+   ./scripts/run_dev.sh
+   
+   # Or using make
+   make dev
    ```
 
 3. **Test the API**
@@ -109,10 +117,17 @@ We have successfully implemented:
 
 - `POST /translate` - Translate a single text
 - `POST /batch_translate` - Translate multiple texts in a batch
+- `POST /detect_language` - Detect the language of a text
+- `POST /async/translate` - Submit an asynchronous translation request
+- `POST /async/batch_translate` - Submit an asynchronous batch translation request
+- `GET /async/status/{task_id}` - Get the status of an asynchronous translation task
 
-### Configuration Endpoint
+### Configuration and Monitoring Endpoints
 
 - `GET /config` - Get current service configuration and supported languages
+- `GET /cache/stats` - Get translation cache statistics
+- `POST /cache/clear` - Clear the translation cache
+- `GET /metrics` - Prometheus metrics (on port 8001)
 
 ### Example Requests
 
@@ -143,16 +158,15 @@ Response:
 }
 ```
 
-#### Batch Translate
+#### Auto-Detect Language and Translate
 
 ```bash
-curl -X POST http://localhost:8000/batch_translate \
+curl -X POST http://localhost:8000/translate \
   -H "Content-Type: application/json" \
   -d '{
-    "texts": ["Hello, how are you?", "What is your name?"],
+    "text": "Hola, ¿cómo estás?",
     "options": {
-      "source_lang": "en",
-      "target_lang": "fr",
+      "target_lang": "en",
       "beam_size": 5
     }
   }'
@@ -162,30 +176,83 @@ Response:
 
 ```json
 {
-  "translations": [
-    "Bonjour, comment allez-vous?",
-    "Comment vous appelez-vous?"
-  ],
-  "source_lang": "en",
-  "target_lang": "fr",
-  "processing_time": 1.535
+  "translated_text": "Hello, how are you?",
+  "source_lang": "es",
+  "target_lang": "en",
+  "processing_time": 0.845
 }
 ```
 
-#### Get Configuration
+#### Detect Language
 
 ```bash
-curl -X GET http://localhost:8000/config
+curl -X POST http://localhost:8000/detect_language \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "Bonjour, comment allez-vous?",
+    "top_k": 3
+  }'
 ```
 
 Response:
 
 ```json
 {
-  "model_size": "small",
-  "device": "cpu",
-  "compute_type": "float32",
-  "supported_languages": ["en", "fr", "de", "es", "it", "pt", "ru", "zh", "ja", "ko", "ar", "hi", ...]
+  "detections": [
+    {"language": "fr", "confidence": 0.89},
+    {"language": "ca", "confidence": 0.05},
+    {"language": "it", "confidence": 0.03}
+  ],
+  "processing_time": 0.021
+}
+```
+
+#### Asynchronous Translation
+
+```bash
+curl -X POST http://localhost:8000/async/translate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "Hello, how are you?",
+    "options": {
+      "source_lang": "en",
+      "target_lang": "fr",
+      "beam_size": 5
+    },
+    "callback_url": "https://example.com/webhook"
+  }'
+```
+
+Response:
+
+```json
+{
+  "task_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "pending",
+  "created_at": "2023-04-01T12:34:56.789Z"
+}
+```
+
+#### Check Asynchronous Translation Status
+
+```bash
+curl -X GET http://localhost:8000/async/status/550e8400-e29b-41d4-a716-446655440000
+```
+
+Response:
+
+```json
+{
+  "task_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "completed",
+  "created_at": "2023-04-01T12:34:56.789Z",
+  "completed_at": "2023-04-01T12:35:01.234Z",
+  "result": {
+    "translated_text": "Bonjour, comment allez-vous?",
+    "source_lang": "en",
+    "target_lang": "fr",
+    "processing_time": 0.922
+  }
 }
 ```
 
@@ -202,6 +269,9 @@ The service can be configured using environment variables:
 | `SERVER_HOST` | Host to bind the server to | 0.0.0.0 |
 | `SERVER_PORT` | Port to bind the server to | 8000 |
 | `SERVER_LOG_LEVEL` | Log level | info |
+| `METRICS_PORT` | Port for Prometheus metrics | 8001 |
+| `CACHE_MAX_SIZE` | Maximum number of items in the translation cache | 1000 |
+| `CACHE_TTL` | Time to live for cached translations (in seconds) | 3600 |
 
 ### Compute Type Options
 
@@ -236,36 +306,92 @@ pytest
 ## Project Structure
 
 ```
-translation-service/
-├── src/
-│   ├── __init__.py
-│   ├── main.py
-│   ├── config.py
-│   ├── logging_setup.py
-│   ├── api/
-│   │   ├── __init__.py
-│   │   ├── endpoints.py
-│   │   └── models.py
-│   ├── models/
-│   │   ├── __init__.py
-│   │   └── translation.py
-│   └── utils/
-│       └── __init__.py
-├── tests/
-│   ├── __init__.py
-│   ├── test_api.py
-│   ├── test_config.py
-│   ├── test_endpoints.py
-│   ├── test_logging.py
-│   ├── test_main.py
-│   └── test_translation.py
-├── k8s/
-│   └── translation-service.yaml
-├── Dockerfile
-├── Makefile
-├── requirements.txt
-├── README.md
-└── .gitignore
+lexi-shift/
+├── .build/              # Build artifacts and temporary files
+├── .github/             # GitHub workflows
+├── docs/                # Documentation files
+├── k8s/                 # Kubernetes manifests
+├── scripts/             # Utility scripts
+│   ├── clean.sh         # Clean up the project
+│   ├── install_hooks.sh # Install git hooks
+│   ├── run_dev.sh       # Run the service in development mode
+│   ├── run_tests.sh     # Run tests with coverage
+│   └── setup_dev.sh     # Set up the development environment
+├── src/                 # Source code
+│   ├── api/             # API endpoints
+│   ├── models/          # Translation models
+│   └── utils/           # Utility functions
+└── tests/               # Test suite
+```
+
+### Utility Scripts
+
+The `scripts` directory contains utility scripts for development and testing:
+
+- `setup_dev.sh`: Sets up the development environment
+- `run_dev.sh`: Runs the service in development mode with hot reloading
+- `run_tests.sh`: Runs tests with coverage reporting
+- `clean.sh`: Cleans up the project
+- `install_hooks.sh`: Installs git hooks for code quality
+
+To use these scripts:
+
+```bash
+# Set up development environment
+./scripts/setup_dev.sh
+
+# Run service in development mode
+./scripts/run_dev.sh
+
+# Run tests with coverage
+./scripts/run_tests.sh
+
+# Clean up the project
+./scripts/clean.sh
+
+# Install git hooks
+./scripts/install_hooks.sh
+```
+
+### Git Hooks
+
+The project includes git hooks to ensure code quality:
+
+- **pre-commit**: Automatically formats and lints staged Python files using black, isort, and flake8
+
+Git hooks are installed automatically when you run `./scripts/setup_dev.sh` or can be installed manually with `./scripts/install_hooks.sh`.
+
+### Makefile Targets
+
+The project includes a Makefile with various targets for common tasks:
+
+```bash
+# Set up development environment
+make setup-local
+
+# Run service in development mode
+make dev
+
+# Run tests with coverage
+make test
+
+# Format code with black and isort
+make format
+
+# Lint code with flake8
+make lint
+
+# Install git hooks
+make hooks
+
+# Clean up the project
+make clean
+
+# Build Docker image
+make build
+
+# Show all available targets
+make help
 ```
 
 ## Known Issues and Limitations
@@ -291,3 +417,15 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [Meta NLLB-200](https://github.com/facebookresearch/fairseq/tree/nllb) - The underlying translation model
 - [Hugging Face Transformers](https://huggingface.co/docs/transformers/index) - Used for model loading and inference
 - [FastAPI](https://fastapi.tiangolo.com/) - Web framework for building the API
+
+## Monitoring
+
+The service exposes Prometheus metrics on port 8001. The following metrics are available:
+
+- **Request metrics**: Count and latency of HTTP requests
+- **Translation metrics**: Count, latency, and text length of translations
+- **Model metrics**: Load time and memory usage of the translation model
+- **System metrics**: CPU and memory usage of the service
+- **Task metrics**: Count, latency, and queue size of asynchronous tasks
+
+You can use Grafana to visualize these metrics and set up alerts.
