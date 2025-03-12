@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: translation-service
+  namespace: default
+  labels:
+    app: translation-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: translation-service
+  template:
+    metadata:
+      labels:
+        app: translation-service
+    spec:
+      containers:
+      - name: translation-service
+        image: ${REGISTRY_IMAGE}
+        env:
+        - name: MODEL_SIZE
+          value: "small"
+        - name: MODEL_DEVICE
+          value: "cpu"
+        - name: MODEL_COMPUTE_TYPE
+          value: "int8"
+        - name: MODEL_CPU_THREADS
+          value: "4"
+        - name: MODEL_NUM_WORKERS
+          value: "2"
+        - name: SERVER_LOG_LEVEL
+          value: "info"
+        ports:
+        - containerPort: 8000
+        resources:
+          limits:
+            cpu: "2"
+            memory: 4Gi
+          requests:
+            cpu: "1"
+            memory: 2Gi
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /live
+            port: 8000
+          initialDelaySeconds: 60
+          periodSeconds: 20
+        volumeMounts:
+        - name: model-cache
+          mountPath: /tmp/nllb_models
+      volumes:
+      - name: model-cache
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: translation-service
+  namespace: default
+  labels:
+    app: translation-service
+spec:
+  selector:
+    app: translation-service
+  ports:
+  - port: 8000
+    targetPort: 8000
+    protocol: TCP
+    name: http
+  type: ClusterIP 
