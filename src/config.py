@@ -14,15 +14,18 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class ModelConfig(BaseSettings):
     """Configuration for the NLLB-200 translation model."""
-    model_config = SettingsConfigDict(env_prefix="MODEL_")
+
+    model_config = SettingsConfigDict(env_prefix="MODEL_", protected_namespaces=())
 
     model_size: str = Field(default="small", description="NLLB model size")
     device: str = Field(default="cpu", description="Device to use")
     compute_type: str = Field(default="float32", description="Compute type")
     cpu_threads: int = Field(default=4, ge=1, description="Number of CPU threads")
     num_workers: int = Field(default=1, ge=1, description="Number of workers")
-    download_root: str = Field(default="/tmp/nllb_models", description="Root directory for model downloads")
-    
+    download_root: str = Field(
+        default="/tmp/nllb_models", description="Root directory for model downloads"
+    )
+
     @field_validator("model_size")
     @classmethod
     def validate_model(cls, v: str) -> str:
@@ -30,7 +33,7 @@ class ModelConfig(BaseSettings):
         if v not in valid_sizes:
             raise ValueError(f"Invalid model size: {v}. Must be one of {valid_sizes}")
         return v
-    
+
     @field_validator("device")
     @classmethod
     def validate_device(cls, v: str) -> str:
@@ -38,7 +41,7 @@ class ModelConfig(BaseSettings):
         if v not in valid_devices:
             raise ValueError(f"Invalid device: {v}. Must be one of {valid_devices}")
         return v
-    
+
     @field_validator("compute_type")
     @classmethod
     def validate_compute_type(cls, v: str) -> str:
@@ -50,14 +53,15 @@ class ModelConfig(BaseSettings):
 
 class ServerConfig(BaseSettings):
     """Configuration for the FastAPI server."""
-    model_config = SettingsConfigDict(env_prefix="SERVER_")
+
+    model_config = SettingsConfigDict(env_prefix="SERVER_", protected_namespaces=())
 
     host: str = Field(default="0.0.0.0", description="Host to bind the server to")
     port: int = Field(default=8000, description="Port to bind the server to")
     workers: int = Field(default=1, description="Number of worker processes")
     log_level: str = Field(default="info", description="Log level")
     cors_origins: List[str] = Field(default=["*"], description="CORS allowed origins")
-    
+
     @field_validator("log_level")
     @classmethod
     def validate_log_level(cls, v: str) -> str:
@@ -69,19 +73,21 @@ class ServerConfig(BaseSettings):
 
 class Settings(BaseSettings):
     """Main settings for the Translation Service."""
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         env_nested_delimiter="__",
+        protected_namespaces=(),
     )
 
     app_name: str = Field(default="translation-service", description="Application name")
     app_version: str = Field(default="0.0.1", description="Application version")
     debug: bool = Field(default=False, description="Debug mode")
-    
+
     model: ModelConfig = Field(default_factory=ModelConfig, description="Model configuration")
     server: ServerConfig = Field(default_factory=ServerConfig, description="Server configuration")
 
 
 # Create global settings instance
-settings = Settings() 
+settings = Settings()
