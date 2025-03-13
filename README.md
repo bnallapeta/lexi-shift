@@ -1,4 +1,4 @@
-# Translation Service
+# lexi-shift: Translation Service
 
 A high-performance text translation service using NLLB-200 models, designed to be part of a speech-to-speech translation pipeline.
 
@@ -100,11 +100,162 @@ We have successfully implemented:
    docker build -t translation-service:latest .
    ```
 
-2. **Run the Docker container**
+2. **Run the container**
 
    ```bash
    docker run -p 8000:8000 translation-service:latest
    ```
+
+3. **Test the container**
+
+   ```bash
+   curl -X POST http://localhost:8000/translate \
+     -H "Content-Type: application/json" \
+     -d '{
+       "text": "Hello, how are you?",
+       "options": {
+         "source_lang": "en",
+         "target_lang": "fr"
+       }
+     }'
+   ```
+
+### Container Runtime Options
+
+The project supports both Docker and Podman as container runtimes. The Makefile automatically detects which runtime is available on your system.
+
+1. **Check container runtime information**
+
+   ```bash
+   make container-info
+   ```
+
+2. **Force a specific container runtime**
+
+   ```bash
+   # Force Docker
+   make FORCE_DOCKER=1 build
+
+   # Force Podman
+   make FORCE_PODMAN=1 build
+   ```
+
+3. **Build and run with the detected runtime**
+
+   ```bash
+   # Build the image
+   make build
+
+   # Run the container
+   make run-container
+
+   # Test the container endpoint
+   make test-container-endpoint
+   ```
+
+4. **Multi-architecture builds**
+
+   The project supports multi-architecture builds using buildx when available:
+
+   ```bash
+   # Build for multiple architectures (requires buildx)
+   make acr-build
+   ```
+
+   If buildx is not available, the build will fall back to a single architecture build.
+
+### Azure Container Registry (ACR) Deployment
+
+1. **Set up Azure CLI and login to Azure**
+
+   ```bash
+   az login
+   ```
+
+2. **Set environment variables**
+
+   ```bash
+   export REGISTRY_TYPE=acr
+   export REGISTRY_NAME=your-acr-name  # Replace with your ACR name
+   ```
+
+3. **Login to ACR**
+
+   ```bash
+   make acr-login
+   ```
+
+4. **Build and push image to ACR**
+
+   ```bash
+   make acr-build
+   ```
+
+   Or build and push separately:
+
+   ```bash
+   make build
+   make acr-push
+   ```
+
+5. **Run the container locally**
+
+   ```bash
+   make run-container
+   ```
+
+6. **Test the container endpoint**
+
+   ```bash
+   make test-translation
+   ```
+
+### KServe Deployment
+
+This project supports deploying the translation service as a KServe InferenceService. Follow these steps to deploy to KServe:
+
+1. **Prerequisites**
+   - Kubernetes cluster with KServe installed
+   - kubectl configured to access your cluster
+
+2. **Create Kubernetes secret for ACR**
+
+   ```bash
+   make create-secret
+   ```
+
+3. **Deploy KServe InferenceService**
+
+   ```bash
+   make kserve-deploy
+   ```
+
+4. **Get the InferenceService URL**
+
+   ```bash
+   make kserve-url
+   ```
+
+5. **Test the KServe InferenceService**
+
+   ```bash
+   make test-kserve
+   ```
+
+### Troubleshooting ACR and KServe
+
+#### ACR Issues
+
+- **Authentication errors**: Make sure you're logged in to Azure (`az login`) and ACR (`make acr-login`).
+- **Push errors**: Check that your ACR name is correct and that you have permissions to push to the repository.
+- **Build errors**: If you encounter build errors, try cleaning the build cache with `make acr-clean` and then rebuilding.
+
+#### KServe Issues
+
+- **Deployment errors**: Check the status of the InferenceService with `kubectl get inferenceservices` and `kubectl describe inferenceservice translation-service`.
+- **Pod issues**: Check the pod logs with `kubectl logs -l serving.kserve.io/inferenceservice=translation-service`.
+- **Connection issues**: Make sure the InferenceService is ready and the URL is accessible.
+- **Image pull errors**: Verify that the Kubernetes secret for ACR is correctly configured with `kubectl describe secret registry-secret`.
 
 ## API Reference
 
@@ -256,6 +407,89 @@ Response:
 }
 ```
 
+## Quick Start for KServe
+
+### Deploy to KServe
+```bash
+# Set environment variables
+export KUBECONFIG=/path/to/your/kubeconfig
+export REGISTRY_TYPE=acr
+export REGISTRY_NAME=your-acr-name
+
+# Login to ACR
+make acr-login
+
+# Build and push image
+make acr-build
+
+# Create Kubernetes secret for ACR
+make create-secret
+
+# Deploy to KServe
+make kserve-deploy
+
+# Get service URL
+make kserve-url
+```
+
+### Test the KServe Deployment
+```bash
+# Test translation
+curl -X POST "http://translation-service.default.your-domain.com/translate" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "Hello, how are you?",
+    "options": {
+      "source_lang": "en",
+      "target_lang": "fr"
+    }
+  }'
+```
+
+### Container Runtime Options
+
+The project supports both Docker and Podman as container runtimes. The Makefile automatically detects which runtime is available on your system.
+
+1. **Check container runtime information**
+
+   ```bash
+   make container-info
+   ```
+
+2. **Force a specific container runtime**
+
+   ```bash
+   # Force Docker
+   make FORCE_DOCKER=1 build
+
+   # Force Podman
+   make FORCE_PODMAN=1 build
+   ```
+
+3. **Build and run with the detected runtime**
+
+   ```bash
+   # Build the image
+   make build
+
+   # Run the container
+   make run-container
+
+   # Test the container endpoint
+   make test-container-endpoint
+   ```
+
+4. **Multi-architecture builds**
+
+   The project supports multi-architecture builds using buildx when available:
+
+   ```bash
+   # Build for multiple architectures (requires buildx)
+   make acr-build
+   ```
+
+   If buildx is not available, the build will fall back to a single architecture build.
+
 ## Configuration
 
 The service can be configured using environment variables:
@@ -292,6 +526,69 @@ pip install bitsandbytes
 # For improved loading performance
 pip install accelerate
 ```
+
+## How to Configure the Service
+
+You can configure the translation service in several ways:
+
+### 1. Environment Variables
+
+When running locally or in a container, set environment variables:
+
+```bash
+# Local development
+export MODEL_SIZE=medium
+export MODEL_DEVICE=cpu
+export MODEL_COMPUTE_TYPE=float16
+python -m uvicorn src.main:app --host 0.0.0.0 --port 8000
+
+# Docker
+docker run -p 8000:8000 \
+  -e MODEL_SIZE=medium \
+  -e MODEL_DEVICE=cpu \
+  -e MODEL_COMPUTE_TYPE=float16 \
+  translation-service:latest
+```
+
+### 2. Kubernetes ConfigMap/Environment Variables
+
+In your Kubernetes deployment or KServe InferenceService, add environment variables:
+
+```yaml
+# In k8s/translation-inferenceservice.yaml
+containers:
+  - name: translation-service
+    image: bnracr.azurecr.io/translation-service:latest
+    env:
+    - name: MODEL_SIZE
+      value: "small"
+    - name: MODEL_DEVICE
+      value: "cpu"
+    - name: MODEL_COMPUTE_TYPE
+      value: "float32"
+```
+
+### 3. Makefile Variables
+
+When using the provided Makefile targets, you can override variables:
+
+```bash
+# Deploy with specific model size
+make kserve-deploy MODEL_SIZE=medium MODEL_DEVICE=cpu
+
+# Build with specific configuration
+make build MODEL_SIZE=large MODEL_COMPUTE_TYPE=float16
+```
+
+### 4. Configuration Endpoint
+
+You can check the current configuration via the `/config` endpoint:
+
+```bash
+curl -X GET http://translation-service.default.your-domain.com/config
+```
+
+This will return the current configuration including model size, device, compute type, and supported languages.
 
 ## Running Tests
 
@@ -389,6 +686,25 @@ make clean
 
 # Build Docker image
 make build
+
+# Run container locally
+make run-container
+
+# Test container endpoint
+make test-container-endpoint
+
+# ACR specific commands
+make acr-login     # Login to Azure Container Registry
+make acr-build     # Build and push multi-arch image to ACR
+make acr-push      # Push image to ACR
+make acr-clean     # Clean ACR images
+make acr-rebuild   # Clean and rebuild ACR images
+make create-secret # Create Kubernetes secret for ACR
+
+# KServe commands
+make kserve-deploy # Deploy KServe InferenceService
+make kserve-url    # Get KServe InferenceService URL
+make test-kserve   # Test KServe InferenceService
 
 # Show all available targets
 make help

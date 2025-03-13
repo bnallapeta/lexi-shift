@@ -106,6 +106,8 @@ The pipeline consists of three independent but interconnected services:
 - [x] Set up proper user permissions (non-root)
 - [x] Configure environment variables
 - [x] Add health checks to container
+- [x] Implement multi-architecture build support (AMD64/ARM64)
+- [x] Fix binary extension compatibility issues for cross-platform deployment
 
 #### Basic Testing
 - [x] Set up pytest framework
@@ -155,6 +157,9 @@ The pipeline consists of three independent but interconnected services:
 - [x] Configure liveness/readiness probes
 - [x] Add horizontal pod autoscaling
 - [x] Create service and ingress definitions
+- [x] Implement KServe InferenceService deployment
+- [x] Configure proper image selection for different architectures
+- [x] Set up secrets for container registry access
 
 #### CI/CD Pipeline
 - [x] Set up GitHub Actions workflow
@@ -162,6 +167,14 @@ The pipeline consists of three independent but interconnected services:
 - [x] Configure Docker image building
 - [x] Set up image publishing to container registry
 - [x] Add version tagging
+
+#### Multi-Architecture Support
+- [x] Implement proper multi-stage build process for cross-platform compatibility
+- [x] Separate pure Python packages from binary extensions in build process
+- [x] Ensure binary extensions are built on the target platform
+- [x] Test deployment on both AMD64 and ARM64 architectures
+- [x] Document multi-architecture build and deployment process
+- [x] Create Makefile targets for multi-architecture builds
 
 #### Security Enhancements
 - [x] Implement input validation

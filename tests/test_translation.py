@@ -186,11 +186,14 @@ def test_translate(translation_model):
 
 def test_translate_error(translation_model):
     """Test translate method with error."""
-    # Temporarily set pipeline to None to trigger the RuntimeError
+    # Save the original pipeline
     original_pipeline = translation_model.pipeline
+
+    # Set pipeline to None to trigger the RuntimeError
     translation_model.pipeline = None
 
     try:
+        # Test that the exception is properly propagated
         with pytest.raises(RuntimeError) as excinfo:
             translation_model.translate(
                 text="Hello, how are you?",
@@ -198,9 +201,10 @@ def test_translate_error(translation_model):
                 target_lang="fr",
             )
 
+        # Verify that the exception was raised with the correct message
         assert "Model not initialized" in str(excinfo.value)
     finally:
-        # Restore the pipeline
+        # Restore the original pipeline
         translation_model.pipeline = original_pipeline
 
 

@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     git \
     cmake \
     pkg-config \
+    curl \
     && rm -rf /var/lib/apt/lists/* \
     && python3 -m pip --version \
     && gcc --version
@@ -20,17 +21,49 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Install Python dependencies in layers for better caching
 COPY requirements.txt /tmp/requirements.txt
 
+# Install only pure Python packages that don't have binary components
+# This is just to speed up the build process
+RUN pip3 install --no-cache-dir setuptools wheel
+
+# Builder stage for target architecture
+FROM --platform=$TARGETPLATFORM python:3.11-slim as builder
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    gcc \
+    g++ \
+    git \
+    cmake \
+    pkg-config \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && python3 -m pip --version \
+    && gcc --version
+
+# Create and activate virtual environment
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Copy requirements
+COPY requirements.txt /tmp/requirements.txt
+
 # Install CPU-only PyTorch first (faster to build)
 RUN pip3 install --no-cache-dir torch==2.2.0 --index-url https://download.pytorch.org/whl/cpu
 
-# Install core dependencies
+# Install all dependencies directly on the target architecture
 RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 
 # Runtime stage
-FROM python:3.11-slim as runtime
+FROM --platform=$TARGETPLATFORM python:3.11-slim as runtime
 
-# Copy virtual environment from deps stage
-COPY --from=deps /opt/venv /opt/venv
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy virtual environment from builder stage
+COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Set working directory
