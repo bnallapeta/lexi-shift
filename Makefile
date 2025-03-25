@@ -37,6 +37,7 @@ PYTHON ?= python3
 VENV ?= venv
 PIP ?= $(VENV)/bin/pip
 KUBECONFIG ?= ${KUBECONFIG}
+PORT ?= 8000
 
 # Create cache directories
 $(shell mkdir -p $(CACHE_DIR)/amd64 $(CACHE_DIR)/arm64)
@@ -56,6 +57,11 @@ setup-local:
 	mkdir -p /tmp/nllb_models
 	$(PYTHON) -m venv $(VENV)
 	. $(VENV)/bin/activate && pip install --upgrade pip && pip install -r requirements.txt
+
+# Run locally
+run-local: setup-local
+	@echo "Starting Translation service locally on port $(PORT)..."
+	. $(VENV)/bin/activate && $(PYTHON) -m uvicorn src.main:app --host 0.0.0.0 --port $(PORT) --reload
 
 # Container information
 container-info:
@@ -169,29 +175,30 @@ endif
 help:
 	@echo "Available commands:"
 	@echo "  Local Development:"
-	@echo "    make setup-local   - Set up local development environment"
-	@echo "    make run-local     - Run service locally"
-	@echo "    make test          - Run tests"
+	@echo "    make setup-local          - Set up local development environment"
+	@echo "    make run-local            - Run service locally on default port (8000)"
+	@echo "    make PORT=8080 run-local  - Run service locally on a custom port"
+	@echo "    make test                 - Run tests"
 	@echo ""
 	@echo "  Container Operations:"
-	@echo "    make container-info - Display container runtime information"
-	@echo "    make build         - Build container image"
-	@echo "    make push          - Push image to registry"
-	@echo "    make deploy        - Deploy to Kubernetes"
-	@echo "    make test-kserve   - Test KServe InferenceService"
+	@echo "    make container-info       - Display container runtime information"
+	@echo "    make build                - Build container image"
+	@echo "    make push                 - Push image to registry"
+	@echo "    make deploy               - Deploy to Kubernetes"
+	@echo "    make test-kserve          - Test KServe InferenceService"
 	@echo ""
 	@echo "  ACR Specific:"
-	@echo "    make acr-login     - Login to Azure Container Registry"
-	@echo "    make acr-build     - Build and push multi-arch image to ACR"
-	@echo "    make acr-clean     - Clean up ACR images"
-	@echo "    make create-secret - Create Kubernetes secret for ACR"
+	@echo "    make acr-login            - Login to Azure Container Registry"
+	@echo "    make acr-build            - Build and push multi-arch image to ACR"
+	@echo "    make acr-clean            - Clean up ACR images"
+	@echo "    make create-secret        - Create Kubernetes secret for ACR"
 	@echo ""
 	@echo "  KServe:"
-	@echo "    make kserve-url    - Get KServe InferenceService URL"
-	@echo "    make test-kserve   - Test KServe InferenceService"
+	@echo "    make kserve-url           - Get KServe InferenceService URL"
+	@echo "    make test-kserve          - Test KServe InferenceService"
 	@echo ""
 	@echo "  Cleanup:"
-	@echo "    make clean         - Clean up all resources"
+	@echo "    make clean                - Clean up all resources"
 	@echo ""
 	@echo "  Miscellaneous:"
-	@echo "    make help          - Show this help message" 
+	@echo "    make help                 - Show this help message" 

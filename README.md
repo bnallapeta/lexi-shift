@@ -73,13 +73,17 @@ We have successfully implemented:
    # Using the development script
    ./scripts/run_dev.sh
    
-   # Or using make
-   make dev
+   # Or using make (default port: 8000)
+   make run-local
+   
+   # Run on a custom port
+   make PORT=8080 run-local
    ```
 
 3. **Test the API**
 
    ```bash
+   # For default port 8000
    curl -X POST http://localhost:8000/translate \
      -H "Content-Type: application/json" \
      -d '{
@@ -90,7 +94,25 @@ We have successfully implemented:
          "beam_size": 5
        }
      }'
+   
+   # If using a custom port
+   curl -X POST http://localhost:8080/translate \
+     -H "Content-Type: application/json" \
+     -d '{
+       "text": "Hello, how are you?",
+       "options": {
+         "source_lang": "en",
+         "target_lang": "fr",
+         "beam_size": 5
+       }
+     }'
    ```
+
+4. **Access API Documentation**
+
+   While the service is running, you can access:
+   - Swagger UI: http://localhost:8000/docs (replace 8000 with your custom port if needed)
+   - ReDoc: http://localhost:8000/redoc (replace 8000 with your custom port if needed)
 
 ### Docker Deployment
 
