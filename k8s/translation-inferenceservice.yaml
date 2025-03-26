@@ -1,7 +1,7 @@
 apiVersion: "serving.kserve.io/v1beta1"
 kind: "InferenceService"
 metadata:
-  name: "translation-service"
+  name: "lexi-shift" 
   namespace: "default"
   annotations:
     sidecar.istio.io/inject: "true"

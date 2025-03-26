@@ -4,7 +4,7 @@
         dev-push local-deploy setup-local run-local test-local \
         debug-deps debug-container clean-local create-secret show-config venv \
         cache-clean acr-login acr-build acr-push acr-clean acr-rebuild check-env \
-        clean-artifacts container-info kserve-url test-kserve
+        clean-artifacts container-info test-kserve
 
 # Core variables
 ACR_NAME ?= bnracr
@@ -145,11 +145,6 @@ acr-clean:
 	-$(CONTAINER_RUNTIME) rmi $(REGISTRY_IMAGE)-arm64 2>/dev/null || true
 	-$(CONTAINER_RUNTIME) rmi $(REGISTRY_IMAGE) 2>/dev/null || true
 
-# KServe commands
-kserve-url:
-	@echo "KServe InferenceService URL:"
-	@kubectl get inferenceservice translation-service -o jsonpath='{.status.url}'
-
 test-kserve:
 	@echo "Testing KServe InferenceService..."
 	./scripts/test_kserve.sh
@@ -192,10 +187,6 @@ help:
 	@echo "    make acr-build            - Build and push multi-arch image to ACR"
 	@echo "    make acr-clean            - Clean up ACR images"
 	@echo "    make create-secret        - Create Kubernetes secret for ACR"
-	@echo ""
-	@echo "  KServe:"
-	@echo "    make kserve-url           - Get KServe InferenceService URL"
-	@echo "    make test-kserve          - Test KServe InferenceService"
 	@echo ""
 	@echo "  Cleanup:"
 	@echo "    make clean                - Clean up all resources"
