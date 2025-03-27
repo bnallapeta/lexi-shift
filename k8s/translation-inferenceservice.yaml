@@ -14,7 +14,7 @@ spec:
         - name: MODEL_SIZE
           value: "small"
         - name: MODEL_DEVICE
-          value: "cpu"
+          value: "cuda"
         - name: MODEL_COMPUTE_TYPE
           value: "float32"
         - name: SERVER_LOG_LEVEL
