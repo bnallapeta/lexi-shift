@@ -7,7 +7,7 @@
         clean-artifacts container-info test-kserve
 
 # Core variables
-ACR_NAME ?= bnracr
+ACR_NAME ?= youracrname
 REGISTRY_TYPE ?= acr
 REGISTRY_NAME ?= ${ACR_NAME}
 REGISTRY_URL ?= $(if $(filter acr,$(REGISTRY_TYPE)),$(REGISTRY_NAME).azurecr.io,\

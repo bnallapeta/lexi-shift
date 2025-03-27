@@ -9,7 +9,7 @@ spec:
   predictor:
     containers:
       - name: translation-service
-        image: bnracr.azurecr.io/translation-service:latest-amd64
+        image: ghcr.io/bnallapeta/lexi-shift:0.0.1
         env:
         - name: MODEL_SIZE
           value: "small"
