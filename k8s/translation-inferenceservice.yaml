@@ -5,6 +5,10 @@ metadata:
   namespace: "default"
   annotations:
     sidecar.istio.io/inject: "true"
+    autoscaling.knative.dev/class: "kpa.autoscaling.knative.dev"
+    autoscaling.knative.dev/target: "1"
+    autoscaling.knative.dev/minScale: "1"
+    autoscaling.knative.dev/maxScale: "2"
 spec:
   predictor:
     containers:
